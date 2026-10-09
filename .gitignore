@@ -29,3 +29,4 @@ idl/**/*.hh
 *.gen.*
 __pycache__/
 *.drawio.bkp
+.gdb_history

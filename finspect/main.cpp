@@ -1,49 +1,48 @@
-#include <cstdio>
-#include <fstream>
-#include <filesystem>
-#include <vector>
-#include <cstdint>
+#include <print>
 
-namespace fs = std::filesystem;
+#include <finspect/IO.h>
+#include <finspect/AhoCorasick.h>
+
+using namespace finspect;
+
+using Trie = std::vector<aho_corasick::Vertex>;
+
 
 
 int main(int argc, char** argv)
 {
-
     if (argc != 2)
     {
-        fprintf(stderr, "Usage: finspect <filename>\n");
+        std::println("Usage: ./finspect <file>");
         return 1;
     }
 
-    const char* filename = argv[1];
+    auto results = OpenFile(argv[1]);
 
-    std::error_code error{};
-    size_t size = fs::file_size(filename, error);
-
-    if (error)
+    if (!results)
     {
-        printf("Faield to get filesize: %s\n", error.message().c_str());
+        std::println("Failed to open file '{}': {}", argv[1], results.error().message());
         return 1;
     }
 
-    std::ifstream input{filename};
+    std::string_view types[] = {
+        "PDF", "PNG", "JPEG"
+    };
 
-    std::vector<uint8_t> bytes{};
-    bytes.resize(size);
+    std::vector<ByteBuffer> dict = {
+        ByteBuffer({'%', 'P', 'D', 'F', '-'}),
+        ByteBuffer({u'\x89','P', 'N', 'G'}),
+        ByteBuffer({u'\xFF', u'\xD8', u'\xFF'}),
+    };
 
-    input.read(
-        reinterpret_cast<char*>(bytes.data()), 
-        size
-    );
+    aho_corasick::SearchTrie trie(dict);
 
+    auto res = trie.search(results.value());
 
-    for (int i = 0; i < std::min((size_t)10, size); i++)
+    for (auto& i : res)
     {
-        printf(" %02x ", bytes[i]);
+        int rlOffset = i.first - types[i.second].length();
+        std::println("{}, {}", rlOffset, types[i.second]);
     }
-
-    printf("\n");
-
     return 0;
 }
